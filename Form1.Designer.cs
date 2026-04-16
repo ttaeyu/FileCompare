@@ -251,7 +251,7 @@
             lvFilesRight.Columns.AddRange(new ColumnHeader[] { columnHeader4, columnHeader5, columnHeader6 });
             lvFilesRight.FullRowSelect = true;
             lvFilesRight.GridLines = true;
-            lvFilesRight.Location = new Point(5, 5);
+            lvFilesRight.Location = new Point(255, -38);
             lvFilesRight.Margin = new Padding(2);
             lvFilesRight.Name = "lvFilesRight";
             lvFilesRight.Size = new Size(385, 279);

@@ -177,7 +177,31 @@ namespace FileCompare
                 MessageBox.Show(" 에러!: " + ex.Message);
             }
         }
+        private void CopyFileWithSafetyCheck(string sourceFilePath, string destFilePath)
+        {
+            // 1. 대상 폴더에 동일한 파일이 존재하는지 확인
+            if (File.Exists(destFilePath))
+            {
+                FileInfo sourceInfo = new FileInfo(sourceFilePath);
+                FileInfo destInfo = new FileInfo(destFilePath);
 
+                // 2. 원본 파일이 대상 파일보다 오래된 경우에만 확인창 띄우기
+                if (sourceInfo.LastWriteTime < destInfo.LastWriteTime)
+                {
+                    DialogResult result = MessageBox.Show(
+                        $"{sourceInfo.Name} 파일은 대상 폴더의 파일보다 오래되었습니다.\n그래도 덮어쓰시겠습니까?",
+                        "덮어쓰기 확인",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning);
+
+                    // 사용자가 '아니오'를 누르면 복사를 중단함
+                    if (result == DialogResult.No) return;
+                }
+            }
+
+            // 3. 파일 복사 실행 (true 설정 시 기존 파일이 있으면 덮어씀)
+            File.Copy(sourceFilePath, destFilePath, true);
+        }
         private void label1_Click(object sender, EventArgs e)
         {
 
@@ -206,7 +230,30 @@ namespace FileCompare
 
         private void button5_Click(object sender, EventArgs e)
         {
+            // 선택된 파일이 없으면 그냥 종료
+            if (lvFilesLeft.SelectedItems.Count == 0) return;
 
+            try
+            {
+                foreach (ListViewItem item in lvFilesLeft.SelectedItems)
+                {
+                    // 1. 파일 이름과 양쪽 경로 만들기
+                    string fileName = item.Text;
+                    string sourceFile = Path.Combine(txtPathLeft.Text, fileName);
+                    string destFile = Path.Combine(txtPathRight.Text, fileName);
+
+                    // 2. 아까 만든 안전 복사 함수 호출!
+                    CopyFileWithSafetyCheck(sourceFile, destFile);
+                }
+
+                // 3. 복사가 끝났으니 색깔 다시 칠하기
+                CompareAndPopulate();
+               
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("복사 중 오류 발생: " + ex.Message);
+            }
         }
 
         private void panel1_Paint(object sender, PaintEventArgs e)
@@ -249,7 +296,26 @@ namespace FileCompare
 
         private void button3_Click(object sender, EventArgs e)
         {
+            if (lvFilesRight.SelectedItems.Count == 0) return;
 
+            try
+            {
+                foreach (ListViewItem item in lvFilesRight.SelectedItems)
+                {
+                    string fileName = item.Text;
+                    string sourceFile = Path.Combine(txtPathRight.Text, fileName);
+                    string destFile = Path.Combine(txtPathLeft.Text, fileName);
+
+                    CopyFileWithSafetyCheck(sourceFile, destFile);
+                }
+
+                CompareAndPopulate();
+               
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("복사 중 오류 발생: " + ex.Message);
+            }
         }
 
         private void splitContainer1_Panel2_Paint_1(object sender, PaintEventArgs e)
@@ -261,7 +327,7 @@ namespace FileCompare
         {
 
         }
-
+       
         private void lvFilesRight_SelectedIndexChanged(object sender, EventArgs e)
         {
 

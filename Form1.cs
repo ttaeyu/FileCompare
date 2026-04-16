@@ -43,7 +43,18 @@ namespace FileCompare
 
         private void button1_Click(object sender, EventArgs e)
         {
+            using (FolderBrowserDialog fbd = new FolderBrowserDialog())
+            {
+                // 2. 사용자가 폴더를 고르고 '확인'을 눌렀다면?
+                if (fbd.ShowDialog() == DialogResult.OK)
+                {
+                    // 3. 텍스트박스에 그 폴더 경로를 딱 써주고
+                    txtPathRight.Text = fbd.SelectedPath;
 
+                    // 4. 2단계에서 만든 함수를 불러서 리스트뷰에 파일을 촤르륵 뿌려줘!
+                    FillListView(fbd.SelectedPath, lvFilesRight);
+                }
+            }
         }
 
         private void textBox1_TextChanged(object sender, EventArgs e)
@@ -78,7 +89,18 @@ namespace FileCompare
 
         private void button2_Click(object sender, EventArgs e)
         {
+            using (FolderBrowserDialog fbd = new FolderBrowserDialog())
+            {
+                // 2. 사용자가 폴더를 고르고 '확인'을 눌렀다면?
+                if (fbd.ShowDialog() == DialogResult.OK)
+                {
+                    // 3. 텍스트박스에 그 폴더 경로를 딱 써주고
+                    txtPathLeft.Text = fbd.SelectedPath;
 
+                    // 4. 2단계에서 만든 함수를 불러서 리스트뷰에 파일을 촤르륵 뿌려줘!
+                    FillListView(fbd.SelectedPath, lvFilesLeft);
+                }
+            }
         }
 
         private void button3_Click(object sender, EventArgs e)

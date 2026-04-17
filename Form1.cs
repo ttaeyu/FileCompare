@@ -1,10 +1,53 @@
 using System.IO;
 using System.Drawing;
+using System.Windows.Forms;
 
 namespace FileCompare
 {
+    
     public partial class Form1 : Form
     {
+        // 1. 폴더 통째로 복사하는 함수 (이게 없어서 에러 났던 거여!)
+        private void CopyDirectory(string sourceDir, string destDir)
+        {
+            if (!Directory.Exists(destDir)) Directory.CreateDirectory(destDir);
+
+            // 파일 복사
+            foreach (string file in Directory.GetFiles(sourceDir))
+            {
+                string destFile = Path.Combine(destDir, Path.GetFileName(file));
+                CopyFileWithSafetyCheck(file, destFile);
+            }
+            // 하위 폴더 복사 (재귀)
+            foreach (string subDir in Directory.GetDirectories(sourceDir))
+            {
+                string destSubDir = Path.Combine(destDir, Path.GetFileName(subDir));
+                CopyDirectory(subDir, destSubDir);
+            }
+        }
+
+        // 2. 파일 하나를 날짜 비교해서 안전하게 복사하는 함수 (중복된 거 다 지우고 이거 하나만 쓰쇼!)
+        private void CopyFileWithSafetyCheck(string sourcePath, string destPath)
+        {
+            if (File.Exists(destPath))
+            {
+                FileInfo src = new FileInfo(sourcePath);
+                FileInfo dst = new FileInfo(destPath);
+
+                // 이미지 요청대로 날짜 정보 포함!
+                if (src.LastWriteTime < dst.LastWriteTime)
+                {
+                    string msg = $"대상에 동일한 이름의 파일이 이미 있습니다.\n" +
+                                 $"대상 파일이 더 신규 파일입니다. 덮어쓰시겠습니까?\n\n" +
+                                 $"원본: {src.LastWriteTime:yyyy-MM-dd HH:mm:ss}\n{sourcePath}\n" +
+                                 $"대상: {dst.LastWriteTime:yyyy-MM-dd HH:mm:ss}\n{destPath}";
+
+                    if (MessageBox.Show(msg, "덮어쓰기 확인", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                        return;
+                }
+            }
+            File.Copy(sourcePath, destPath, true);
+        }
         private void CompareAndPopulate()
         {
             // 우리가 쓰던 텍스트박스 이름으로 복구!
@@ -177,31 +220,7 @@ namespace FileCompare
                 MessageBox.Show(" 에러!: " + ex.Message);
             }
         }
-        private void CopyFileWithSafetyCheck(string sourceFilePath, string destFilePath)
-        {
-            // 1. 대상 폴더에 동일한 파일이 존재하는지 확인
-            if (File.Exists(destFilePath))
-            {
-                FileInfo sourceInfo = new FileInfo(sourceFilePath);
-                FileInfo destInfo = new FileInfo(destFilePath);
-
-                // 2. 원본 파일이 대상 파일보다 오래된 경우에만 확인창 띄우기
-                if (sourceInfo.LastWriteTime < destInfo.LastWriteTime)
-                {
-                    DialogResult result = MessageBox.Show(
-                        $"{sourceInfo.Name} 파일은 대상 폴더의 파일보다 오래되었습니다.\n그래도 덮어쓰시겠습니까?",
-                        "덮어쓰기 확인",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Warning);
-
-                    // 사용자가 '아니오'를 누르면 복사를 중단함
-                    if (result == DialogResult.No) return;
-                }
-            }
-
-            // 3. 파일 복사 실행 (true 설정 시 기존 파일이 있으면 덮어씀)
-            File.Copy(sourceFilePath, destFilePath, true);
-        }
+        
         private void label1_Click(object sender, EventArgs e)
         {
 
@@ -230,30 +249,17 @@ namespace FileCompare
 
         private void button5_Click(object sender, EventArgs e)
         {
-            // 선택된 파일이 없으면 그냥 종료
             if (lvFilesLeft.SelectedItems.Count == 0) return;
 
-            try
+            foreach (ListViewItem item in lvFilesLeft.SelectedItems)
             {
-                foreach (ListViewItem item in lvFilesLeft.SelectedItems)
-                {
-                    // 1. 파일 이름과 양쪽 경로 만들기
-                    string fileName = item.Text;
-                    string sourceFile = Path.Combine(txtPathLeft.Text, fileName);
-                    string destFile = Path.Combine(txtPathRight.Text, fileName);
+                string sourcePath = Path.Combine(txtPathLeft.Text, item.Text);
+                string destPath = Path.Combine(txtPathRight.Text, item.Text);
 
-                    // 2. 아까 만든 안전 복사 함수 호출!
-                    CopyFileWithSafetyCheck(sourceFile, destFile);
-                }
-
-                // 3. 복사가 끝났으니 색깔 다시 칠하기
-                CompareAndPopulate();
-               
+                if (Directory.Exists(sourcePath)) CopyDirectory(sourcePath, destPath);
+                else if (File.Exists(sourcePath)) CopyFileWithSafetyCheck(sourcePath, destPath);
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("복사 중 오류 발생: " + ex.Message);
-            }
+            CompareAndPopulate(); // 화면 갱신
         }
 
         private void panel1_Paint(object sender, PaintEventArgs e)
@@ -296,28 +302,38 @@ namespace FileCompare
 
         private void button3_Click(object sender, EventArgs e)
         {
-            if (lvFilesRight.SelectedItems.Count == 0) return;
+            if (lvFilesLeft.SelectedItems.Count == 0) return;
 
             try
             {
-                foreach (ListViewItem item in lvFilesRight.SelectedItems)
+                foreach (ListViewItem item in lvFilesLeft.SelectedItems)
                 {
                     string fileName = item.Text;
-                    string sourceFile = Path.Combine(txtPathRight.Text, fileName);
-                    string destFile = Path.Combine(txtPathLeft.Text, fileName);
+                    string sourceFile = Path.Combine(txtPathLeft.Text, fileName);
+                    string destFile = Path.Combine(txtPathRight.Text, fileName);
 
-                    CopyFileWithSafetyCheck(sourceFile, destFile);
+                    if (Directory.Exists(sourceFile))
+                    {
+                       
+                    }
+                    else if (File.Exists(sourceFile))
+                    {
+                       
+                    }
                 }
 
+                // 2. 메시지 창 대신, 화면(리스트뷰 색상)만 즉시 업데이트!
+                // 사용자는 색깔이 검은색으로 변하는 걸 보고 "아, 복사 됐구나" 알 수 있습니다.
                 CompareAndPopulate();
-               
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                MessageBox.Show("복사 중 오류 발생: " + ex.Message);
+                // 정말 심각한 에러가 아니면 조용히 처리하거나, 
+                // 필요하다면 최소한의 에러 내용만 남겨둡니다.
             }
         }
-
+        // ⭐ 파일 하나를 안전하게 복사하는 기계
+       
         private void splitContainer1_Panel2_Paint_1(object sender, PaintEventArgs e)
         {
 
@@ -342,5 +358,7 @@ namespace FileCompare
         {
 
         }
+
     }
+
 }

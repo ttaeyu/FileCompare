@@ -1,6 +1,7 @@
 using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Linq;
 
 namespace FileCompare
 {
@@ -27,6 +28,7 @@ namespace FileCompare
         }
 
         // 2. 파일 하나를 날짜 비교해서 안전하게 복사하는 함수 (중복된 거 다 지우고 이거 하나만 쓰쇼!)
+
         private void CopyFileWithSafetyCheck(string sourcePath, string destPath)
         {
             if (File.Exists(destPath))
@@ -50,104 +52,66 @@ namespace FileCompare
         }
         private void CompareAndPopulate()
         {
-            // 우리가 쓰던 텍스트박스 이름으로 복구!
             string leftPath = txtPathLeft.Text;
             string rightPath = txtPathRight.Text;
 
-            // 1. 양쪽 경로가 모두 입력되었고 존재하는지 확인
-            if (string.IsNullOrWhiteSpace(leftPath) || !Directory.Exists(leftPath) ||
-                string.IsNullOrWhiteSpace(rightPath) || !Directory.Exists(rightPath))
-            {
-                return;
-            }
+            if (!Directory.Exists(leftPath) || !Directory.Exists(rightPath)) return;
 
-            // 화면 깜빡임 방지 (우리가 쓰던 리스트뷰 이름으로 복구!)
             lvFilesLeft.BeginUpdate();
             lvFilesRight.BeginUpdate();
             lvFilesLeft.Items.Clear();
             lvFilesRight.Items.Clear();
 
-            try
+            // 1. 왼쪽/오른쪽의 폴더와 파일 목록을 모두 가져옵니다.
+            DirectoryInfo leftDir = new DirectoryInfo(leftPath);
+            DirectoryInfo rightDir = new DirectoryInfo(rightPath);
+
+            // GetFileSystemInfos를 쓰면 폴더와 파일을 한꺼번에 가져올 수 있어 편합니다!
+            FileSystemInfo[] leftItems = leftDir.GetFileSystemInfos();
+            FileSystemInfo[] rightItems = rightDir.GetFileSystemInfos();
+
+            // 왼쪽 리스트 채우기
+            foreach (var li in leftItems)
             {
-                // 2. 파일 목록 가져오기 및 정렬 (PPT의 고급 LINQ 적용)
-                var leftFiles = Directory.EnumerateFiles(leftPath)
-                                         .Select(p => new FileInfo(p))
-                                         .OrderBy(f => f.Name).ToList();
-
-                var rightFiles = Directory.EnumerateFiles(rightPath)
-                                          .Select(p => new FileInfo(p))
-                                          .OrderBy(f => f.Name).ToList();
-
-                // --- [왼쪽 리스트뷰(lvFilesLeft) 채우기 및 비교] ---
-                foreach (var lf in leftFiles)
-                {
-                    var litem = new ListViewItem(lf.Name);
-                    litem.UseItemStyleForSubItems = true; // 행 전체 색상 적용 (필수)
-                    litem.SubItems.Add((lf.Length / 1024).ToString("N0") + " KB");
-                    litem.SubItems.Add(lf.LastWriteTime.ToString("g")); // PPT 날짜 형식 ("g")
-
-                    // 오른쪽 파일 중 이름이 같은 파일 찾기 (대소문자 무시)
-                    var rf = rightFiles.FirstOrDefault(f => f.Name.Equals(lf.Name, StringComparison.OrdinalIgnoreCase));
-
-                    if (rf == null)
-                    {
-                        litem.ForeColor = Color.Purple; // 단독 파일
-                    }
-                    else
-                    {
-                        if (lf.LastWriteTime > rf.LastWriteTime) litem.ForeColor = Color.Red;      // New
-                        else if (lf.LastWriteTime < rf.LastWriteTime) litem.ForeColor = Color.Gray; // Old
-                        else litem.ForeColor = Color.Black;                                         // 동일
-                    }
-                    lvFilesLeft.Items.Add(litem); // 원래 이름
-                }
-
-                // --- [오른쪽 리스트뷰(lvFilesRight) 채우기 및 비교] ---
-                foreach (var rf in rightFiles)
-                {
-                    var ritem = new ListViewItem(rf.Name);
-                    ritem.UseItemStyleForSubItems = true; // 행 전체 색상 적용 (필수)
-                    ritem.SubItems.Add((rf.Length / 1024).ToString("N0") + " KB");
-                    ritem.SubItems.Add(rf.LastWriteTime.ToString("g"));
-
-                    // 왼쪽 파일 중 이름이 같은 파일 찾기
-                    var lf = leftFiles.FirstOrDefault(f => f.Name.Equals(rf.Name, StringComparison.OrdinalIgnoreCase));
-
-                    if (lf == null)
-                    {
-                        ritem.ForeColor = Color.Purple; // 단독 파일
-                    }
-                    else
-                    {
-                        // 오른쪽 파일(rf) 기준으로 비교!
-                        if (rf.LastWriteTime > lf.LastWriteTime) ritem.ForeColor = Color.Red;      // New
-                        else if (rf.LastWriteTime < lf.LastWriteTime) ritem.ForeColor = Color.Gray; // Old
-                        else ritem.ForeColor = Color.Black;                                         // 동일
-                    }
-                    lvFilesRight.Items.Add(ritem); // 원래 이름
-                }
-
-                // 3. 컬럼 너비 자동 조정 (우리가 쓰던 리스트뷰 이름 적용)
-                for (int i = 0; i < lvFilesLeft.Columns.Count; i++)
-                    lvFilesLeft.AutoResizeColumn(i, ColumnHeaderAutoResizeStyle.ColumnContent);
-
-                for (int i = 0; i < lvFilesRight.Columns.Count; i++)
-                    lvFilesRight.AutoResizeColumn(i, ColumnHeaderAutoResizeStyle.ColumnContent);
+                var item = CreateListViewItem(li);
+                // 반대편에 이름이 같은 놈(파일이든 폴더든) 찾기
+                var ri = rightItems.FirstOrDefault(x => x.Name.Equals(li.Name, StringComparison.OrdinalIgnoreCase));
+                ApplyColor(item, li, ri);
+                lvFilesLeft.Items.Add(item);
             }
-            catch (DirectoryNotFoundException) // PPT 예외 처리
+
+            // 오른쪽 리스트 채우기
+            foreach (var ri in rightItems)
             {
-                MessageBox.Show(this, "폴더를 찾을 수 없습니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                var item = CreateListViewItem(ri);
+                var li = leftItems.FirstOrDefault(x => x.Name.Equals(ri.Name, StringComparison.OrdinalIgnoreCase));
+                ApplyColor(item, ri, li);
+                lvFilesRight.Items.Add(item);
             }
-            catch (IOException ex)
-            {
-                MessageBox.Show(this, "입출력 오류: " + ex.Message, "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                // 반드시 잠금 해제
-                lvFilesLeft.EndUpdate();
-                lvFilesRight.EndUpdate();
-            }
+
+            lvFilesLeft.EndUpdate();
+            lvFilesRight.EndUpdate();
+        }
+
+        // 헬퍼 함수: 아이템 생성 (폴더면 크기 칸에 <Folder> 표시)
+        private ListViewItem CreateListViewItem(FileSystemInfo info)
+        {
+            var item = new ListViewItem(info.Name);
+            if (info is DirectoryInfo) item.SubItems.Add("<Folder>");
+            else item.SubItems.Add((((FileInfo)info).Length / 1024).ToString("N0") + " KB");
+
+            item.SubItems.Add(info.LastWriteTime.ToString("g"));
+            item.UseItemStyleForSubItems = true;
+            return item;
+        }
+
+        // 헬퍼 함수: 색상 적용
+        private void ApplyColor(ListViewItem item, FileSystemInfo mine, FileSystemInfo target)
+        {
+            if (target == null) item.ForeColor = Color.Purple;
+            else if (mine.LastWriteTime > target.LastWriteTime) item.ForeColor = Color.Red;
+            else if (mine.LastWriteTime < target.LastWriteTime) item.ForeColor = Color.Gray;
+            else item.ForeColor = Color.Black;
         }
 
         // ⭐ 색상을 결정해서 리스트뷰 아이템을 만들어주는 전용 함수

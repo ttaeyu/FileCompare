@@ -266,35 +266,18 @@ namespace FileCompare
 
         private void button3_Click(object sender, EventArgs e)
         {
-            if (lvFilesLeft.SelectedItems.Count == 0) return;
 
-            try
+            if (lvFilesRight.SelectedItems.Count == 0) return;
+
+            foreach (ListViewItem item in lvFilesRight.SelectedItems)
             {
-                foreach (ListViewItem item in lvFilesLeft.SelectedItems)
-                {
-                    string fileName = item.Text;
-                    string sourceFile = Path.Combine(txtPathLeft.Text, fileName);
-                    string destFile = Path.Combine(txtPathRight.Text, fileName);
+                string sourcePath = Path.Combine(txtPathLeft.Text, item.Text);
+                string destPath = Path.Combine(txtPathRight.Text, item.Text);
 
-                    if (Directory.Exists(sourceFile))
-                    {
-                       
-                    }
-                    else if (File.Exists(sourceFile))
-                    {
-                       
-                    }
-                }
-
-                // 2. 메시지 창 대신, 화면(리스트뷰 색상)만 즉시 업데이트!
-                // 사용자는 색깔이 검은색으로 변하는 걸 보고 "아, 복사 됐구나" 알 수 있습니다.
-                CompareAndPopulate();
+                if (Directory.Exists(sourcePath)) CopyDirectory(sourcePath, destPath);
+                else if (File.Exists(sourcePath)) CopyFileWithSafetyCheck(sourcePath, destPath);
             }
-            catch (Exception)
-            {
-                // 정말 심각한 에러가 아니면 조용히 처리하거나, 
-                // 필요하다면 최소한의 에러 내용만 남겨둡니다.
-            }
+            CompareAndPopulate(); // 화면 갱신
         }
         // ⭐ 파일 하나를 안전하게 복사하는 기계
        

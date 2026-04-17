@@ -19,7 +19,7 @@
 - 로그인 버튼 : 아이디와 패스워드가 모두 맞아야 로그인 허용
 ## 실행 화면 (과제2)
 - 코드의 실행 스크린샷과 구현 내용 설명
-![실행화면](img/screenshot-2.png)
+![실행화면](img/1.png.png)
 - 구현한 내용 (위 그림 참조)
 - 패스워드 입력 내용 숨기기 : UseSystemPasswordChar 속성 이용
 - Placeholder 메시지를 표시할 때는 UseSystemPasswordChar 없애기
